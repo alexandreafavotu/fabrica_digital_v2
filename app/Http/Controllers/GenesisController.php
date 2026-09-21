@@ -36,11 +36,11 @@ class GenesisController extends Controller
         2. PADRÃO SKU: Mantenha estritamente o formato 'MP-XXX' para Matérias-Primas e 'PA-XXX' para Produtos Acabados (Ex: MP-015, PA-004). Nunca desvie desse padrão.
 
         REGRAS DE DADOS (CADA CAMPO DEVE SER UM ITEM NO JSON):
-        1. MATERIAIS (5 itens): SKU, Nome, Unidade.
-        2. PRODUTOS (3 itens): SKU, Nome, Preço Venda, Tempo Produção (MÍNIMO 1 E MÁXIMO 5 DIAS - OBRIGATÓRIO) e RECEITA (BOM).
+        1. MATERIAIS (5 itens): SKU, Nome, Unidade. (Não repetir nomes, não criar nomes novos parecidos com já existentes)
+        2. PRODUTOS (3 itens): SKU, Nome, Preço Venda, Tempo Produção (MÍNIMO 1 E MÁXIMO 5 DIAS - OBRIGATÓRIO) e RECEITA (BOM). (Não repetir nomes, não criar nomes novos parecidos com já existentes)
            *** IMPORTANTE: As quantidades na RECEITA (BOM) devem ser APENAS NÚMEROS INTEIROS (Sem decimais). ***
-        3. FORNECEDORES (3 para cada material): Nome Razão Social, CNPJ, Telefone, Material SKU, Preço Unitário, Prazo Entrega Dias (MÍNIMO 3 E MÁXIMO 15 DIAS - OBRIGATÓRIO), CEP, Rua, Número, Bairro, Cidade, Estado UF.
-        4. CLIENTES (5 itens): Razão Social, CNPJ, Telefone, CEP, Rua, Número, Bairro, Cidade, Estado UF.
+        3. FORNECEDORES (3 para cada material): Nome Razão Social, CNPJ, Telefone, Material SKU, Preço Unitário, Prazo Entrega Dias (MÍNIMO 1 E MÁXIMO 10 DIAS - OBRIGATÓRIO), CEP, Rua, Número, Bairro, Cidade, Estado UF.
+        4. CLIENTES (5 itens): Razão Social, CNPJ, Telefone, CEP, Rua, Número, Bairro, Cidade, Estado UF. (Não repetir nomes, não criar nomes novos parecidos com já existentes)
 
         FORMATO DE RESPOSTA (JSON PURO):
         {

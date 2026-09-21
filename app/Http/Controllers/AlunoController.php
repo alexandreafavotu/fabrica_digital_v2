@@ -1891,7 +1891,7 @@ public function iniciarSeparacao($id)
 
                 $qtdFinalProduzida = $op->apontamentos->sum('quantidade_produzida');
 
-                $produto = ProdutoAcabado::where('id', $op->produto_id)->lockForUpdate()->first();
+                $produto = ProdutoAcabado::where('id', $op->produto_acabado_id)->lockForUpdate()->first();
                 if ($produto) {
                     $produto->quantidade_estoque += $qtdFinalProduzida;
                     $produto->save();
