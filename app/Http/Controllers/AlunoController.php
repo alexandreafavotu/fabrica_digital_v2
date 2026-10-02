@@ -1755,28 +1755,34 @@ public function iniciarSeparacao($id)
     // --- VISUALIZAR NOTA FISCAL (DANFE) ---
   
     public function visualizarNota($id)
-{
-    // --- 1. IDENTIFICA O ALUNO E A TURMA ATIVA (Âncora de Segurança) ---
-    $aluno = $this->getAlunoAtivo();
-    if (!$aluno) abort(403, 'Aluno não encontrado ou sem turma ativa.');
+    {
+        $user = Auth::user();
 
-    // --- 2. BUSCA A NOTA FISCAL COM TRAVA DE ISOLAMENTO ---
-    // Garante que a Nota pertence a um Pedido desta Turma
-    $nota = NotaFiscal::with(['pedido.cliente', 'pedido.itens.produto', 'pedido.turma'])
-                      ->whereHas('pedido', function($q) use ($aluno) {
-                          $q->where('turma_id', $aluno->turma_id); // <--- BLINDAGEM DE POSSE
-                      })
-                      ->findOrFail($id);
+        if ($user && $user->tipo == 'professor') {
+            $nota = NotaFiscal::with(['pedido.cliente', 'pedido.itens.produto', 'pedido.turma'])
+                              ->findOrFail($id);
+        } else {
+            // --- 1. IDENTIFICA O ALUNO E A TURMA ATIVA (Âncora de Segurança) ---
+            $aluno = $this->getAlunoAtivo();
+            if (!$aluno) abort(403, 'Aluno não encontrado ou sem turma ativa.');
 
-    // 3. GERAÇÃO DO CÓDIGO DE BARRAS REAL EM SVG (Sua lógica original mantida)
-    $generator = new \Picqer\Barcode\BarcodeGeneratorSVG();
-    
-    // Gera o código de barras diretamente como código SVG
-    // 2 = largura das barras, 30 = altura
-    $barcode = $generator->getBarcode($nota->chave_acesso, $generator::TYPE_CODE_128);
+            // --- 2. BUSCA A NOTA FISCAL COM TRAVA DE ISOLAMENTO ---
+            $nota = NotaFiscal::with(['pedido.cliente', 'pedido.itens.produto', 'pedido.turma'])
+                              ->whereHas('pedido', function($q) use ($aluno) {
+                                  $q->where('turma_id', $aluno->turma_id); // <--- BLINDAGEM DE POSSE
+                              })
+                              ->findOrFail($id);
+        }
 
-    return view('aluno.expedicao.nota_fiscal', compact('nota', 'barcode'));
-}
+        // 3. GERAÇÃO DO CÓDIGO DE BARRAS REAL EM SVG (Sua lógica original mantida)
+        $generator = new \Picqer\Barcode\BarcodeGeneratorSVG();
+        
+        // Gera o código de barras diretamente como código SVG
+        // 2 = largura das barras, 30 = altura
+        $barcode = $generator->getBarcode($nota->chave_acesso, $generator::TYPE_CODE_128);
+
+        return view('aluno.expedicao.nota_fiscal', compact('nota', 'barcode'));
+    }
     // =========================================================================
     //  FUNÇÃO AUXILIAR DE SEGURANÇA (O GUARDIÃO DO CAOS)
     //  Cole isso no final do arquivo, antes da última chave }
