@@ -184,69 +184,53 @@ Voltar para a Linha
                     </div>
                 </div>
 
-                {{-- 2. LINHAS ATIVAS --}}
-                <div class="mt-8">
-                    <div class="flex items-center justify-between mb-4 bg-indigo-600 text-white p-4 rounded-xl border-4 border-black shadow-[6px_6px_0px_0px_black]">
-                        <h3 class="text-xl font-black flex items-center uppercase tracking-tighter gap-2">
-                            @if(Auth::user()->acessibilidade_visual)
-    <!-- Ícone fábrica amarelo -->
-    <svg class="w-7 h-7 inline" viewBox="0 0 24 24" fill="none" stroke="#FFFF00" stroke-width="2"
-         style="stroke:#FFFF00!important; filter:none!important;">
-        <rect x="3" y="10" width="6" height="10"></rect>
-        <rect x="10" y="6" width="6" height="14"></rect>
-        <rect x="17" y="12" width="4" height="8"></rect>
-    </svg>
-@else
-    <span class="text-2xl">🏭</span>
-@endif
- 2. Linhas de Produção Ativas
-                        </h3>
-                        
-                        @if(Auth::user()->tipo == 'aluno')
-                            <div class="flex items-center gap-2 bg-indigo-800 px-3 py-1 rounded border border-indigo-400">
-                                <span class="text-[10px] text-indigo-200 uppercase font-bold tracking-widest">Sua Carga:</span>
-                                <span class="text-white text-sm font-black">
-                                    @php $minhasAtivas = $minhasOrdens->where('aluno_id', $aluno->id ?? 0)->where('status', '!=', 'Concluída')->count(); @endphp
-                                    {{ $minhasAtivas }} / {{ $aluno->turma->capacidade_producao ?? 3 }}
-                                </span>
+                {{-- 2. LINHAS DE PRODUÇÃO ATIVAS --}}
+                <div class="mt-8 space-y-6">
+                    @php
+                        $grupos = $minhasOrdens->groupBy('aluno_id');
+                        $meuId = (Auth::user()->tipo == 'aluno' && isset($aluno)) ? $aluno->id : null;
+                        $minhasOrdensDoAluno = $meuId && $grupos->has($meuId) ? $grupos->get($meuId) : collect();
+                        $outrosGrupos = $grupos->reject(function($itens, $id) use ($meuId) {
+                            return $meuId && $id == $meuId;
+                        });
+                    @endphp
+
+                    {{-- SE FOR ALUNO: BLOCO DE DESTAQUE DA SUA PRÓPRIA LINHA --}}
+                    @if(Auth::user()->tipo == 'aluno')
+                        <div class="bg-indigo-900 border-4 border-black rounded-xl shadow-[8px_8px_0px_0px_black] overflow-hidden">
+                            <div class="bg-indigo-600 text-white p-4 border-b-4 border-black flex flex-wrap items-center justify-between gap-2">
+                                <h3 class="text-xl font-black flex items-center uppercase tracking-tighter gap-2">
+                                    @if(Auth::user()->acessibilidade_visual)
+                                        <svg class="w-7 h-7 inline" viewBox="0 0 24 24" fill="none" stroke="#FFFF00" stroke-width="2" style="stroke:#FFFF00!important; filter:none!important;">
+                                            <rect x="3" y="10" width="6" height="10"></rect>
+                                            <rect x="10" y="6" width="6" height="14"></rect>
+                                            <rect x="17" y="12" width="4" height="8"></rect>
+                                        </svg>
+                                    @else
+                                        <span class="text-2xl">⚡</span>
+                                    @endif
+                                    2. Sua Linha de Produção (Seu Chão de Fábrica)
+                                </h3>
+                                <div class="flex items-center gap-2 bg-indigo-950 px-3 py-1.5 rounded border-2 border-indigo-400">
+                                    <span class="text-[10px] text-indigo-200 uppercase font-bold tracking-widest">Sua Carga:</span>
+                                    <span class="text-yellow-300 text-sm font-black">
+                                        @php $minhasAtivas = $minhasOrdens->where('aluno_id', $aluno->id ?? 0)->where('status', '!=', 'Concluída')->count(); @endphp
+                                        {{ $minhasAtivas }} / {{ $aluno->turma->capacidade_producao ?? 3 }} Máquinas
+                                    </span>
+                                </div>
                             </div>
-                        @endif
-                    </div>
 
-                    @if($minhasOrdens->isEmpty())
-                        <div class="p-16 text-center text-indigo-300 border-4 border-dashed border-indigo-200 rounded-xl bg-indigo-50">
-                            <p class="font-black text-2xl uppercase">Fábrica Parada</p>
-                            <p class="font-bold text-sm">Nenhuma máquina operando no momento.</p>
-                        </div>
-                    @else
-                        @php $grupos = $minhasOrdens->groupBy('aluno_id'); @endphp
-
-                        <div class="space-y-8">
-                            @foreach($grupos as $alunoId => $ordensDoAluno)
-                                @php 
-                                    $operador = $ordensDoAluno->first()->aluno;
-                                    $eMeu = (Auth::user()->tipo == 'aluno' && $alunoId == $aluno->id);
-                                @endphp
-
-                                <div class="bg-white border-4 border-black rounded-xl overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]">
-                                    {{-- Cabeçalho do Operador --}}
-                                    <div class="bg-gray-100 p-3 border-b-4 border-black flex items-center justify-between">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-10 h-10 rounded bg-indigo-600 text-white flex items-center justify-center font-black border-2 border-black shadow-sm">
-                                                {{ substr($operador->nome ?? '?', 0, 1) }}
-                                            </div>
-                                            <div>
-                                                <h4 class="font-black text-gray-800 text-sm uppercase tracking-wide leading-none">
-                                                    LINHA DE: {{ $operador->nome ?? 'Desconhecido' }}
-                                                </h4>
-                                                @if($eMeu) <span class="inline-block mt-1 bg-green-500 text-white text-[9px] font-black px-2 py-0.5 rounded border border-black uppercase">SUA LINHA</span> @endif
-                                            </div>
-                                        </div>
+                            <div class="p-5 bg-indigo-50">
+                                @if($minhasOrdensDoAluno->isEmpty())
+                                    <div class="p-8 text-center text-indigo-400 border-4 border-dashed border-indigo-200 rounded-xl bg-white">
+                                        <span class="text-3xl">🛑</span>
+                                        <p class="font-black text-lg uppercase mt-2 text-indigo-900">Nenhuma ordem assumida por você</p>
+                                        <p class="text-xs font-bold text-gray-600">Selecione uma ordem no Backlog acima clicando em <strong>"Pegar Ordem"</strong> para iniciar sua linha.</p>
                                     </div>
-
-                                    <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 bg-yellow-50">
-                                        @foreach($ordensDoAluno as $op)
-                                            
+                                @else
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        @foreach($minhasOrdensDoAluno as $op)
+                                            @php $eMeu = true; @endphp
                                             {{-- LÓGICA DO CAOS: MÁQUINA QUEBRADA --}}
                                             @if($op->em_manutencao)
                                                 <div class="bg-red-600 p-4 rounded-lg shadow-[6px_6px_0px_0px_black] border-4 border-black relative overflow-hidden flex flex-col justify-between animate-pulse text-white">
@@ -262,16 +246,11 @@ Voltar para a Linha
                                                             </div>
                                                         @endif
                                                     </div>
-                                                    
-                                                    {{-- Faixas de Perigo (CSS Striped) --}}
                                                     <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/caution-stripe.png')]"></div>
                                                 </div>
                                             @else
-                                                
                                                 {{-- CARD DE MÁQUINA (RODANDO) --}}
-                                                <div class="bg-white p-4 rounded-lg border-4 border-black shadow-[6px_6px_0px_0px_black] relative flex flex-col justify-between 
-                                                    {{ $op->status == 'Em Produção' ? 'ring-4 ring-green-400 ring-opacity-50' : '' }}">
-                                                    
+                                                <div class="bg-white p-4 rounded-lg border-4 border-black shadow-[6px_6px_0px_0px_black] relative flex flex-col justify-between {{ $op->status == 'Em Produção' ? 'ring-4 ring-green-400' : '' }}">
                                                     <div class="mb-3">
                                                         <div class="flex justify-between items-start mb-2">
                                                             <span class="text-[9px] font-black uppercase px-2 py-1 rounded border-2 border-black {{ $op->status == 'Em Produção' ? 'bg-green-400 text-black' : 'bg-yellow-300 text-black' }}">
@@ -284,67 +263,55 @@ Voltar para a Linha
                                                     </div>
 
                                                     <div class="pt-3 border-t-2 border-dashed border-gray-300">
-                                                        @if($eMeu)
-                                                            @if($op->status == 'Aberta')
-                                                                @if($op->status_material == 'Pendente')
-                                                                    <form action="{{ route('aluno.producao.solicitar', $op->id) }}" method="POST"> 
-                                                                        @csrf 
-                                                                        <button class="w-full bg-blue-600 text-white px-2 py-2 rounded border-2 border-black shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-y-[1px] text-[10px] font-black uppercase hover:bg-blue-700 transition">
-                                                                            Solicitar Material
-                                                                        </button> 
-                                                                    </form>
-                                                                @elseif($op->status_material == 'Solicitado')
-                                                                    <div class="text-center bg-orange-100 border-2 border-orange-300 p-1 rounded">
-                                                                        <p class="text-[9px] font-black text-orange-700 uppercase animate-pulse"><p class="text-[9px] font-black text-orange-700 uppercase animate-pulse">
-    @if(Auth::user()->acessibilidade_visual)
-        <svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="none" stroke="#FFFF00" stroke-width="2"
-             style="stroke:#FFFF00!important; filter:none!important;">
-            <path d="M6 2h12v4l-4 4 4 4v4H6v-4l4-4-4-4V2z"></path>
-        </svg>
-    @else
-        ⏳
-    @endif
-    Aguardando WMS
-</p>
-                                                                    </div>
-                                                                @elseif($op->status_material == 'Entregue')
-                                                                    <form action="{{ route('aluno.producao.iniciar', $op->id) }}" method="POST"> 
-                                                                        @csrf 
-                                                                        <button class="w-full bg-green-500 text-white px-2 py-2 rounded border-2 border-black shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-y-[1px] text-[10px] font-black uppercase hover:bg-green-600 transition animate-bounce">
-                                                                            ⚡ Ligar Máquina
-                                                                        </button> 
-                                                                    </form>
-                                                                @endif
-                                                            @elseif($op->status == 'Em Produção')
-                                                                @php
-                                                                    $inicio = \Carbon\Carbon::parse($op->data_inicio_real); $agora = \Carbon\Carbon::parse($dataJogo);
-                                                                    $dias = max(0, $inicio->diffInDays($agora)); $total = $op->produto->tempo_producao_dias;
-                                                                    $porc = min(100, ($total > 0) ? ($dias / $total) * 100 : 100);
-                                                                    $podeFinalizar = $porc >= 100;
-                                                                @endphp
-                                                                
-                                                                {{-- Barra de Progresso Industrial --}}
-                                                                <div class="w-full bg-gray-300 rounded-full h-4 mb-2 overflow-hidden border-2 border-black relative">
-                                                                    <div class="h-full {{ $podeFinalizar ? 'bg-green-500' : 'bg-yellow-400 stripe-animation' }}" style="width: {{ $porc }}%"></div>
-                                                                    <span class="absolute inset-0 flex items-center justify-center text-[8px] font-black text-black">{{ round($porc) }}%</span>
+                                                        @if($op->status == 'Aberta')
+                                                            @if($op->status_material == 'Pendente')
+                                                                <form action="{{ route('aluno.producao.solicitar', $op->id) }}" method="POST"> 
+                                                                    @csrf 
+                                                                    <button class="w-full bg-blue-600 text-white px-2 py-2 rounded border-2 border-black shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-y-[1px] text-[10px] font-black uppercase hover:bg-blue-700 transition">
+                                                                        Solicitar Material
+                                                                    </button> 
+                                                                </form>
+                                                            @elseif($op->status_material == 'Solicitado')
+                                                                <div class="text-center bg-orange-100 border-2 border-orange-300 p-1 rounded">
+                                                                    <p class="text-[9px] font-black text-orange-700 uppercase animate-pulse">
+                                                                        @if(Auth::user()->acessibilidade_visual)
+                                                                            <svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="none" stroke="#FFFF00" stroke-width="2" style="stroke:#FFFF00!important; filter:none!important;">
+                                                                                <path d="M6 2h12v4l-4 4 4 4v4H6v-4l4-4-4-4V2z"></path>
+                                                                            </svg>
+                                                                        @else
+                                                                            ⏳
+                                                                        @endif
+                                                                        Aguardando WMS
+                                                                    </p>
                                                                 </div>
-
-                                                                @if($podeFinalizar) 
-                                                                    <a href="{{ route('aluno.producao.apontar', $op->id) }}" class="block w-full bg-indigo-600 text-white text-center px-2 py-2 rounded border-2 border-black shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-y-[1px] font-black uppercase text-[10px] hover:bg-indigo-700 transition">
-                                                                        ⏹ FINALIZAR
-                                                                    </a>
-                                                                @else 
-                                                                    <div class="text-center text-[9px] text-green-700 font-black uppercase bg-green-100 border border-green-300 rounded p-1">⚙️ Trabalhando...</div> 
-                                                                @endif
+                                                            @elseif($op->status_material == 'Entregue')
+                                                                <form action="{{ route('aluno.producao.iniciar', $op->id) }}" method="POST"> 
+                                                                    @csrf 
+                                                                    <button class="w-full bg-green-500 text-white px-2 py-2 rounded border-2 border-black shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-y-[1px] text-[10px] font-black uppercase hover:bg-green-600 transition animate-bounce">
+                                                                        ⚡ Ligar Máquina
+                                                                    </button> 
+                                                                </form>
                                                             @endif
-                                                        @else
-                                                            {{-- VISÃO PROFESSOR OU OUTROS --}}
-                                                            @if($op->status == 'Em Produção')
-                                                                @php $porc = rand(10, 90); // Simulação visual se não for meu @endphp
-                                                                <div class="w-full bg-gray-200 rounded-full h-3 border border-black overflow-hidden"><div class="h-full bg-green-500" style="width: 50%"></div></div>
-                                                                <div class="text-center text-[9px] font-bold text-gray-500 mt-1">EM OPERAÇÃO</div>
-                                                            @else
-                                                                <div class="text-center text-[9px] font-bold text-gray-400 bg-gray-100 border border-gray-200 rounded py-1">AGUARDANDO</div>
+                                                        @elseif($op->status == 'Em Produção')
+                                                            @php
+                                                                $inicio = \Carbon\Carbon::parse($op->data_inicio_real); $agora = \Carbon\Carbon::parse($dataJogo);
+                                                                $dias = max(0, $inicio->diffInDays($agora)); $total = $op->produto->tempo_producao_dias;
+                                                                $porc = min(100, ($total > 0) ? ($dias / $total) * 100 : 100);
+                                                                $podeFinalizar = $porc >= 100;
+                                                            @endphp
+                                                            
+                                                            {{-- Barra de Progresso Industrial --}}
+                                                            <div class="w-full bg-gray-300 rounded-full h-4 mb-2 overflow-hidden border-2 border-black relative">
+                                                                <div class="h-full {{ $podeFinalizar ? 'bg-green-500' : 'bg-yellow-400 stripe-animation' }}" style="width: {{ $porc }}%"></div>
+                                                                <span class="absolute inset-0 flex items-center justify-center text-[8px] font-black text-black">{{ round($porc) }}%</span>
+                                                            </div>
+
+                                                            @if($podeFinalizar) 
+                                                                <a href="{{ route('aluno.producao.apontar', $op->id) }}" class="block w-full bg-indigo-600 text-white text-center px-2 py-2 rounded border-2 border-black shadow-[2px_2px_0px_0px_black] active:shadow-none active:translate-y-[1px] font-black uppercase text-[10px] hover:bg-indigo-700 transition">
+                                                                    ⏹ FINALIZAR
+                                                                </a>
+                                                            @else 
+                                                                <div class="text-center text-[9px] text-green-700 font-black uppercase bg-green-100 border border-green-300 rounded p-1">⚙️ Trabalhando...</div> 
                                                             @endif
                                                         @endif
                                                     </div>
@@ -352,10 +319,94 @@ Voltar para a Linha
                                             @endif
                                         @endforeach
                                     </div>
-                                </div>
-                            @endforeach
+                                @endif
+                            </div>
                         </div>
                     @endif
+
+                    {{-- 3. MONITORAMENTO GERAL / OUTROS OPERADORES --}}
+                    <div class="bg-white border-4 border-black rounded-xl shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] overflow-hidden">
+                        <div class="bg-gray-800 text-white p-4 border-b-4 border-black flex items-center justify-between">
+                            <h3 class="text-xl font-black flex items-center uppercase tracking-tighter gap-2">
+                                @if(Auth::user()->acessibilidade_visual)
+                                    <svg class="w-7 h-7 inline" viewBox="0 0 24 24" fill="none" stroke="#FFFF00" stroke-width="2" style="stroke:#FFFF00!important; filter:none!important;">
+                                        <rect x="3" y="10" width="6" height="10"></rect>
+                                        <rect x="10" y="6" width="6" height="14"></rect>
+                                        <rect x="17" y="12" width="4" height="8"></rect>
+                                    </svg>
+                                @else
+                                    <span class="text-2xl">👥</span>
+                                @endif
+                                {{ Auth::user()->tipo == 'professor' ? 'Linhas de Produção da Turma' : '3. Outras Linhas da Fábrica (Colegas)' }}
+                            </h3>
+                            <span class="bg-white text-black px-3 py-1 rounded border-2 border-black text-xs font-black">
+                                {{ $outrosGrupos->count() }} Operador(es)
+                            </span>
+                        </div>
+
+                        <div class="p-6 bg-gray-100 space-y-4">
+                            @if($outrosGrupos->isEmpty())
+                                <div class="p-8 text-center text-gray-400 border-4 border-dashed border-gray-300 rounded-xl bg-white">
+                                    <p class="font-black text-lg uppercase">Nenhum outro operador em atividade</p>
+                                    <p class="text-xs font-bold text-gray-500">As demais linhas de produção estão livres ou aguardando ordens.</p>
+                                </div>
+                            @else
+                                @foreach($outrosGrupos as $alunoId => $ordensDoAluno)
+                                    @php $operador = $ordensDoAluno->first()->aluno; @endphp
+                                    <details class="group bg-white border-2 border-black rounded-lg shadow-[4px_4px_0px_0px_black] overflow-hidden">
+                                        <summary class="p-3 bg-gray-50 flex items-center justify-between cursor-pointer select-none hover:bg-yellow-50 transition border-b border-gray-200">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded bg-gray-700 text-white flex items-center justify-center font-black border-2 border-black text-xs">
+                                                    {{ substr($operador->nome ?? '?', 0, 1) }}
+                                                </div>
+                                                <div>
+                                                    <h4 class="font-black text-gray-800 text-sm uppercase leading-none">
+                                                        LINHA DE: {{ $operador->nome ?? 'Desconhecido' }}
+                                                    </h4>
+                                                    <span class="text-[10px] text-gray-500 font-bold uppercase">{{ $ordensDoAluno->count() }} ordem(ns) em andamento</span>
+                                                </div>
+                                            </div>
+                                            <span class="text-xs font-black bg-gray-200 group-open:bg-black group-open:text-white px-2 py-1 rounded transition">
+                                                <span class="group-open:hidden">▼ Ver Linha</span>
+                                                <span class="hidden group-open:inline">▲ Recolher</span>
+                                            </span>
+                                        </summary>
+
+                                        <div class="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 bg-yellow-50/50">
+                                            @foreach($ordensDoAluno as $op)
+                                                @if($op->em_manutencao)
+                                                    <div class="bg-red-600 p-3 rounded border-2 border-black text-white text-center">
+                                                        <span class="text-2xl">🛠️</span>
+                                                        <h5 class="font-black text-xs uppercase mt-1">FALHA TÉCNICA</h5>
+                                                        <p class="text-[9px] font-bold">{{ $op->motivo_manutencao ?? 'Manutenção' }}</p>
+                                                    </div>
+                                                @else
+                                                    <div class="bg-white p-3 rounded border-2 border-black shadow-[2px_2px_0px_0px_black]">
+                                                        <div class="flex justify-between items-start mb-1">
+                                                            <span class="text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-black {{ $op->status == 'Em Produção' ? 'bg-green-300' : 'bg-yellow-200' }}">
+                                                                {{ $op->status }}
+                                                            </span>
+                                                            <span class="text-[10px] font-mono text-gray-400">#{{ $op->id }}</span>
+                                                        </div>
+                                                        <h5 class="font-black text-gray-800 uppercase text-xs truncate">{{ $op->produto->nome }}</h5>
+                                                        <p class="text-[10px] font-bold text-gray-500">Qtd: {{ $op->quantidade }} un</p>
+                                                        <div class="mt-2 pt-2 border-t border-dashed border-gray-200">
+                                                            @if($op->status == 'Em Produção')
+                                                                <div class="w-full bg-gray-200 rounded-full h-2 border border-black overflow-hidden"><div class="h-full bg-green-500" style="width: 60%"></div></div>
+                                                                <div class="text-center text-[8px] font-black text-gray-500 mt-0.5 uppercase">Operando</div>
+                                                            @else
+                                                                <div class="text-center text-[8px] font-bold text-gray-400 uppercase">Aguardando / Setup</div>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    </details>
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
                 </div>
 
                 {{-- CARD DO HISTÓRICO (LINK GRANDE) --}}
@@ -469,4 +520,26 @@ Voltar para a Linha
             to { background-position: 0 0; }
         }
     </style>
+
+    {{-- Preservação da posição do Scroll --}}
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Restaura o scroll se houver posição salva
+            const scrollPos = sessionStorage.getItem("producao_scroll_pos");
+            if (scrollPos !== null) {
+                window.scrollTo({
+                    top: parseInt(scrollPos, 10),
+                    behavior: "instant"
+                });
+                sessionStorage.removeItem("producao_scroll_pos");
+            }
+
+            // Salva o scroll ao enviar qualquer formulário desta tela
+            document.querySelectorAll("form").forEach(form => {
+                form.addEventListener("submit", function() {
+                    sessionStorage.setItem("producao_scroll_pos", window.scrollY || window.pageYOffset);
+                });
+            });
+        });
+    </script>
 </x-app-layout>

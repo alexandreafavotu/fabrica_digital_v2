@@ -56,29 +56,28 @@ class CaosController extends Controller
         return back()->with('error', "CAOS GERADO! O setor de $tipo ficará parado por $dias dias (até {$dataFim->format('d/m/Y')}).");
     }
 
-    // 3. Aplica Quebra de Máquina
+    // 3. Aplica Quebra de Máquina (Suporta Múltiplas OPs)
     public function quebrarMaquina(Request $request, $turmaId)
     {
         $request->validate([
-            'ordem_producao_id' => 'required|exists:ordens_producao,id',
+            'ordem_producao_ids' => 'required|array|min:1',
+            'ordem_producao_ids.*' => 'exists:ordens_producao,id',
             'dias_manutencao' => 'required|integer|min:1', 
         ]);
 
         $turma = Turma::findOrFail($turmaId);
-        $op = OrdemProducao::findOrFail($request->ordem_producao_id);
-        
-        // CORREÇÃO AQUI: Adicionei (int) para converter o texto em número
         $dias = (int) $request->dias_manutencao;
-
-        // Calcula a data de fim da manutenção
         $dataFim = \Carbon\Carbon::parse($turma->data_jogo)->addDays($dias);
-        
-        $op->em_manutencao = true;
-        $op->motivo_manutencao = "Quebra inesperada. Manutenção corretiva em andamento.";
-        $op->previsao_conserto_ate = $dataFim; 
-        $op->save();
+        $ids = $request->ordem_producao_ids;
 
-        return back()->with('error', "CAOS GERADO: Máquina parada na OP #{$op->id} por {$dias} dias!");
+        OrdemProducao::whereIn('id', $ids)->update([
+            'em_manutencao' => true,
+            'motivo_manutencao' => "Quebra inesperada. Manutenção corretiva em andamento.",
+            'previsao_conserto_ate' => $dataFim
+        ]);
+
+        $total = count($ids);
+        return back()->with('error', "CAOS GERADO: {$total} máquina(s) parada(s) por {$dias} dias!");
     }
 
     // 5. Salva Mensagem Geral (Plantão)
@@ -107,62 +106,69 @@ class CaosController extends Controller
 
         return back()->with('success', 'Tudo normalizado! O caos acabou.');
     }
-    // 4. Aplica Atraso de Fornecedor (Compras)
+
+    // 4. Aplica Atraso de Fornecedor (Compras - Suporta Múltiplas OCs)
     public function atrasarFornecedor(Request $request, $turmaId)
     {
         $request->validate([
-            'ordem_compra_id' => 'required|exists:ordens_compra,id',
+            'ordem_compra_ids' => 'required|array|min:1',
+            'ordem_compra_ids.*' => 'exists:ordens_compra,id',
             'dias' => 'required|integer|min:1',
         ]);
 
-        $oc = OrdemCompra::findOrFail($request->ordem_compra_id);
+        $turma = Turma::findOrFail($turmaId);
         $dias = (int) $request->dias;
-        
-        // Se já tiver data, adiciona. Se não, define a partir de hoje da turma.
-        $baseData = $oc->data_entrega_prevista 
-            ? \Carbon\Carbon::parse($oc->data_entrega_prevista) 
-            : \Carbon\Carbon::parse(Turma::find($turmaId)->data_jogo);
+        $ocs = OrdemCompra::whereIn('id', $request->ordem_compra_ids)->get();
 
-        $novaData = $baseData->addDays($dias);
-        
-        $oc->data_entrega_prevista = $novaData;
-        $oc->save();
+        foreach ($ocs as $oc) {
+            $baseData = $oc->data_entrega_prevista 
+                ? \Carbon\Carbon::parse($oc->data_entrega_prevista) 
+                : \Carbon\Carbon::parse($turma->data_jogo);
 
-        return back()->with('error', "CAOS GERADO: Fornecedor atrasou a entrega em {$dias} dias! Nova data: {$novaData->format('d/m/Y')}.");
+            $oc->data_entrega_prevista = $baseData->addDays($dias);
+            $oc->save();
+        }
+
+        $total = $ocs->count();
+        return back()->with('error', "CAOS GERADO: Fornecedor atrasou {$total} compra(s) em {$dias} dias!");
     }
+
     public function sabotarCarga(Request $request, $turmaId)
     {
         $request->validate([
-            'ordem_compra_id' => 'required|exists:ordens_compra,id',
+            'ordem_compra_ids' => 'required|array|min:1',
+            'ordem_compra_ids.*' => 'exists:ordens_compra,id',
             'descricao_inconformidade' => 'required|string',
         ]);
 
-        $oc = \App\Models\OrdemCompra::findOrFail($request->ordem_compra_id);
-        
-        $oc->tem_inconformidade = true;
-        $oc->descricao_inconformidade = $request->descricao_inconformidade;
-        $oc->save();
+        $ids = $request->ordem_compra_ids;
+        OrdemCompra::whereIn('id', $ids)->update([
+            'tem_inconformidade' => true,
+            'descricao_inconformidade' => $request->descricao_inconformidade,
+        ]);
 
-        return back()->with('error', "INCONFORMIDADE GERADA: A OC #{$oc->id} agora possui uma falha técnica programada!");
+        $total = count($ids);
+        return back()->with('error', "INCONFORMIDADE GERADA: {$total} carga(s) programada(s) com defeito técnico!");
     }
 
-    // 8. Sabotar Produção (Refugo Programado)
+    // 8. Sabotar Produção (Refugo Programado - Suporta Múltiplas OPs)
     public function sabotarProducao(Request $request, $turmaId)
     {
         $request->validate([
-            'ordem_producao_id' => 'required|exists:ordens_producao,id',
+            'ordem_producao_ids' => 'required|array|min:1',
+            'ordem_producao_ids.*' => 'exists:ordens_producao,id',
             'qtd_refugo_forcado' => 'required|integer|min:1',
             'motivo_refugo_forcado' => 'required|string',
         ]);
 
-        $op = \App\Models\OrdemProducao::findOrFail($request->ordem_producao_id);
-        
-        // Grava a ordem de sabotagem no banco
-        $op->tem_refugo_forcado = true;
-        $op->qtd_refugo_forcado = $request->qtd_refugo_forcado;
-        $op->motivo_refugo_forcado = $request->motivo_refugo_forcado;
-        $op->save();
+        $ids = $request->ordem_producao_ids;
+        OrdemProducao::whereIn('id', $ids)->update([
+            'tem_refugo_forcado' => true,
+            'qtd_refugo_forcado' => $request->qtd_refugo_forcado,
+            'motivo_refugo_forcado' => $request->motivo_refugo_forcado,
+        ]);
 
-        return back()->with('error', "FALHA INJETADA: A OP #{$op->id} foi programada para ter {$request->qtd_refugo_forcado} un de refugo!");
+        $total = count($ids);
+        return back()->with('error', "FALHA INJETADA: {$total} OP(s) programada(s) para ter {$request->qtd_refugo_forcado} un de refugo!");
     }
 }
